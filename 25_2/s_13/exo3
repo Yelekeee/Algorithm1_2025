@@ -1,0 +1,78 @@
+import java.util.*;
+
+public class NeuroSim {
+    static final Random rnd = new Random(42);
+
+    // 1) Generate M random binary vectors of length N (Bernoulli(0.5))
+    static int[][] gen(int M, int N) {
+        int[][] X = new int[M][N];
+        for (int i = 0; i < M; i++) {
+            for (int j = 0; j < N; j++) {
+                X[i][j] = rnd.nextBoolean() ? 1 : 0;
+            }
+        }
+        return X;
+    }
+
+    // Cosine similarity for binary vectors
+    static double cosine(int[] a, int[] b) {
+        int dot = 0, na = 0, nb = 0;
+        for (int i = 0; i < a.length; i++) {
+            dot += a[i] & b[i];
+            na  += a[i];
+            nb  += b[i];
+        }
+        if (na == 0 || nb == 0) return 0.0; // define 0 when a or b is zero
+        return dot / (Math.sqrt(na) * Math.sqrt(nb));
+    }
+
+    // Jaccard similarity = |A∩B| / |A∪B|
+    static double jaccard(int[] a, int[] b) {
+        int inter = 0, uni = 0;
+        for (int i = 0; i < a.length; i++) {
+            int ai = a[i], bi = b[i];
+            inter += (ai & bi);
+            uni   += (ai | bi);
+        }
+        if (uni == 0) return 1.0; // both zero vectors -> identical
+        return inter / (double) uni;
+    }
+
+    // Utility: compute mean and std of a list
+    static double[] meanStd(List<Double> vals) {
+        int n = vals.size();
+        double s = 0;
+        for (double v : vals) s += v;
+        double mean = s / n;
+        double v2 = 0;
+        for (double v : vals) v2 += (v - mean) * (v - mean);
+        double std = Math.sqrt(v2 / n);
+        return new double[]{mean, std};
+    }
+
+    // Run one experiment: all pairwise similarities among M vectors of length N
+    static void run(int M, int N) {
+        int[][] X = gen(M, N);
+        List<Double> cos = new ArrayList<>();
+        List<Double> jac = new ArrayList<>();
+        for (int i = 0; i < M; i++) {
+            for (int j = i + 1; j < M; j++) {
+                cos.add(cosine(X[i], X[j]));
+                jac.add(jaccard (X[i], X[j]));
+            }
+        }
+        double[] c = meanStd(cos);
+        double[] j = meanStd(jac);
+        System.out.println("N=" + N + ", pairs=" + cos.size());
+        System.out.printf("Cosine   mean=%.4f std=%.4f%n", c[0], c[1]);
+        System.out.printf("Jaccard  mean=%.4f std=%.4f%n", j[0], j[1]);
+        System.out.println();
+    }
+
+    public static void main(String[] args) {
+        int M = 100;                 // 1) 100 random binary vectors
+        run(M, 100);                 // 2) observe approx Gaussian-like spread
+        run(M, 500);                 // 3) larger N -> concentration
+        run(M, 1000);
+    }
+}
